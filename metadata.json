@@ -1,0 +1,7 @@
+{
+  "name": "Executive AI Assistant",
+  "description": "An executive-grade assistant that integrates with Outlook, Google Calendar, and Notion to manage tasks, emails, and meetings via voice and chat. Powered by Gemini, it provides proactive briefings and persistent reminders to keep you on track.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
