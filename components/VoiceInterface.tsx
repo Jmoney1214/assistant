@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, LiveSession, LiveServerMessage, Modality, Blob, FunctionDeclaration, Type } from '@google/genai';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { LiveSession, LiveServerMessage, Modality, Blob, FunctionDeclaration, Type } from '@google/genai';
 import { Mic, MicOff, Zap, Loader } from 'lucide-react';
 import { encode, decode, decodeAudioData } from '../utils/audio';
 import { Task, CalendarEvent, Priority, TaskStatus } from '../types';
+import { getGeminiClient } from '../utils/geminiClient';
 
 type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error' | 'closed';
 interface VoiceMessage {
@@ -70,6 +71,8 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ addTask, addEven
     const currentInputTranscriptionRef = useRef('');
     const currentOutputTranscriptionRef = useRef('');
 
+    const geminiClient = useMemo(() => getGeminiClient(), []);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
@@ -81,7 +84,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ addTask, addEven
         setMessages([{ sender: 'bot', text: 'Connecting to assistant...' }]);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const ai = geminiClient;
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = stream;
@@ -218,7 +221,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ addTask, addEven
             setConnectionState('error');
             setMessages([{ sender: 'bot', text: 'Failed to get microphone access. Please check permissions.' }]);
         }
-    }, [connectionState, addTask, addEvent]);
+    }, [connectionState, addTask, addEvent, geminiClient]);
 
     const stopConversation = useCallback(() => {
         if (sessionRef.current) {

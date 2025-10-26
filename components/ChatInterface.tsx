@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { Send, Loader } from 'lucide-react';
 import { Task, Priority, TaskStatus, CalendarEvent } from '../types';
+import { getGeminiModel, extractText } from '../utils/geminiClient';
 
 interface ChatInterfaceProps {
     addTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void;
@@ -20,7 +21,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ addTask, addEvent 
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const model = getGeminiModel();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,12 +38,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ addTask, addEvent 
         setIsLoading(true);
 
         try {
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-pro",
-                contents: input,
-                config: {
-                    systemInstruction: `You are an executive assistant. Your primary job is to help the user manage their tasks and calendar. If they ask you to create a task, you MUST respond with a valid JSON object for the 'create_task' action. If they ask to create a calendar event, you MUST respond with a valid JSON object for the 'create_calendar_event' action. For other queries, use the 'chat_response' action. Do not include any other text or markdown formatting outside of the JSON object.`,
+            const response = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: input }]}],
+                generationConfig: {
                     responseMimeType: "application/json",
+                    temperature: 0.3,
+                    topP: 0.8,
+                    topK: 40,
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
@@ -73,10 +75,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ addTask, addEvent 
                             response_text: { type: Type.STRING, nullable: true }
                         }
                     }
-                },
+                }
             });
 
-            const responseText = response.text;
+            const responseText = extractText(response);
             let botMessage: ChatMessage;
 
             try {

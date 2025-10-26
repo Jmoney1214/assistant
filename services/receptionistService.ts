@@ -1,7 +1,8 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { Priority } from '../types';
+import { getGeminiModel, extractText } from '../utils/geminiClient';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+const model = getGeminiModel();
 
 const systemInstruction = `You are a receptionist AI for an executive assistant. Your role is to read inbound messages (SMS or email), analyze them, and turn them into structured data for creating tasks or calendar events. You must extract intent, dates, names, and action items.
 
@@ -49,17 +50,17 @@ const responseSchema = {
 
 export const processInboundMessage = async (prompt: string): Promise<any> => {
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
-            contents: prompt,
-            config: {
+        const response = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }]}],
+            generationConfig: {
                 systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema,
-            },
+                temperature: 0.2,
+            }
         });
 
-        const responseText = response.text;
+        const responseText = extractText(response);
         return JSON.parse(responseText);
 
     } catch (error) {
